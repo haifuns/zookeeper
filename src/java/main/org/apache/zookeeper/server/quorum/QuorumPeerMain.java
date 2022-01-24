@@ -34,6 +34,8 @@ import org.apache.zookeeper.server.quorum.QuorumPeerConfig.ConfigException;
 
 /**
  *
+ * zookeeper启动入口
+ *
  * <h2>Configuration file</h2>
  *
  * When the main() method of this class is used to start the program, the first
@@ -96,29 +98,35 @@ public class QuorumPeerMain {
     protected void initializeAndRun(String[] args)
         throws ConfigException, IOException
     {
+        // 用来解析配置文件
         QuorumPeerConfig config = new QuorumPeerConfig();
         if (args.length == 1) {
+            // 如果只传了一个参数，就认为是zoo.cfg文件地址
             config.parse(args[0]);
         }
 
         // Start and schedule the the purge task
+        // 启动后台线程，定期清理日志文件和快照文件
         DatadirCleanupManager purgeMgr = new DatadirCleanupManager(config
                 .getDataDir(), config.getDataLogDir(), config
                 .getSnapRetainCount(), config.getPurgeInterval());
         purgeMgr.start();
 
         if (args.length == 1 && config.servers.size() > 0) {
+            // 集群启动
             runFromConfig(config);
         } else {
             LOG.warn("Either no config or no quorum defined in config, running "
                     + " in standalone mode");
             // there is only server in the quorum -- run as standalone
+            // 单机启动
             ZooKeeperServerMain.main(args);
         }
     }
 
     public void runFromConfig(QuorumPeerConfig config) throws IOException {
       try {
+          // 注册jmx bean
           ManagedUtil.registerLog4jMBeans();
       } catch (JMException e) {
           LOG.warn("Unable to register log4j JMX control", e);
@@ -126,12 +134,15 @@ public class QuorumPeerMain {
   
       LOG.info("Starting quorum peer");
       try {
+          // 网络连接工厂
           ServerCnxnFactory cnxnFactory = ServerCnxnFactory.createFactory();
           cnxnFactory.configure(config.getClientPortAddress(),
                                 config.getMaxClientCnxns());
-  
+
+          // quorumPeer代表一个zk节点
           quorumPeer = new QuorumPeer();
           quorumPeer.setClientPortAddress(config.getClientPortAddress());
+          // 磁盘数据管理组件 FileTxnSnapLog
           quorumPeer.setTxnFactory(new FileTxnSnapLog(
                       new File(config.getDataLogDir()),
                       new File(config.getDataDir())));
@@ -145,6 +156,7 @@ public class QuorumPeerMain {
           quorumPeer.setSyncLimit(config.getSyncLimit());
           quorumPeer.setQuorumVerifier(config.getQuorumVerifier());
           quorumPeer.setCnxnFactory(cnxnFactory);
+          // 内存数据库 ZKDatabase
           quorumPeer.setZKDatabase(new ZKDatabase(quorumPeer.getTxnFactory()));
           quorumPeer.setLearnerType(config.getPeerType());
   

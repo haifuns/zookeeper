@@ -407,8 +407,10 @@ public class QuorumPeer extends Thread implements QuorumStats.Provider {
     @Override
     public synchronized void start() {
         loadDataBase();
-        cnxnFactory.start();        
+        cnxnFactory.start();
+        // 开始leader选举，初始化相应组件，其实是在initLeaderElection
         startLeaderElection();
+        // 执行当前线程
         super.start();
     }
 
@@ -634,6 +636,7 @@ public class QuorumPeer extends Thread implements QuorumStats.Provider {
 
         LOG.debug("Starting quorum peer");
         try {
+            // 注册jmx bean
             jmxQuorumBean = new QuorumBean(this);
             MBeanRegistry.getInstance().register(jmxQuorumBean, null);
             for(QuorumServer s: getView().values()){
@@ -662,11 +665,14 @@ public class QuorumPeer extends Thread implements QuorumStats.Provider {
 
         try {
             /*
+             * 主要逻辑
              * Main loop
              */
             while (running) {
+                // 根据当前节点的状态执行相应的处理
                 switch (getPeerState()) {
                 case LOOKING:
+                    // 选举中状态
                     LOG.info("LOOKING");
 
                     if (Boolean.getBoolean("readonlymode.enabled")) {
