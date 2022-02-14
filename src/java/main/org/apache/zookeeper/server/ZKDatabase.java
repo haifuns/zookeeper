@@ -219,7 +219,8 @@ public class ZKDatabase {
                 addCommittedProposal(r);
             }
         };
-        
+
+        // 读取快照和事务日志后恢复服务器数据库
         long zxid = snapLog.restore(dataTree,sessionsWithTimeouts,listener);
         initialized = true;
         return zxid;

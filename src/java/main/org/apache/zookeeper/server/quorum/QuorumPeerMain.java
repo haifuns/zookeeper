@@ -101,7 +101,7 @@ public class QuorumPeerMain {
         // 用来解析配置文件
         QuorumPeerConfig config = new QuorumPeerConfig();
         if (args.length == 1) {
-            // 如果只传了一个参数，就认为是zoo.cfg文件地址
+            // 如果只传了一个参数, 就认为是zoo.cfg文件地址
             config.parse(args[0]);
         }
 

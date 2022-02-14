@@ -127,11 +127,14 @@ public class FileTxnSnapLog {
      */
     public long restore(DataTree dt, Map<Long, Integer> sessions, 
             PlayBackListener listener) throws IOException {
+        // 从最后一个有效快照反序列化DataTree, 获得最后的zxid lastProcessedZxid
         snapLog.deserialize(dt, sessions);
         FileTxnLog txnLog = new FileTxnLog(dataDir);
+        // 获取大于有效快照zxid的所有事务
         TxnIterator itr = txnLog.read(dt.lastProcessedZxid+1);
         long highestZxid = dt.lastProcessedZxid;
         TxnHeader hdr;
+        // 循环处理快照之后的事务
         while (true) {
             // iterator points to 
             // the first valid txn when initialized
@@ -148,11 +151,13 @@ public class FileTxnSnapLog {
                 highestZxid = hdr.getZxid();
             }
             try {
+                // 处理这条事务
                 processTransaction(hdr,dt,sessions, itr.getTxn());
             } catch(KeeperException.NoNodeException e) {
                throw new IOException("Failed to process transaction type: " +
                      hdr.getType() + " error: " + e.getMessage(), e);
             }
+            // 增加一条事务提交日志
             listener.onTxnLoaded(hdr, itr.getTxn());
             if (!itr.next()) 
                 break;

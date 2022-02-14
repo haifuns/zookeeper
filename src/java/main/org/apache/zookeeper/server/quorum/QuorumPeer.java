@@ -406,16 +406,19 @@ public class QuorumPeer extends Thread implements QuorumStats.Provider {
     
     @Override
     public synchronized void start() {
+        // 从磁盘加载快照和事务日志, 恢复数据到内存数据库
         loadDataBase();
+        // 建立网络通信
         cnxnFactory.start();
-        // 开始leader选举，初始化相应组件，其实是在initLeaderElection
+        // 开始leader选举, 初始化相应组件(其实是在initLeaderElection)
         startLeaderElection();
-        // 执行当前线程
+        // 启动当前线程
         super.start();
     }
 
 	private void loadDataBase() {
 		try {
+            // 从磁盘加载数据到内存数据库
             zkDb.loadDataBase();
 
             // load the epochs
