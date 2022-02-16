@@ -262,6 +262,7 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
         }
 
         // Make a clean snapshot
+        // 保存快照
         takeSnapshot();
     }
 
