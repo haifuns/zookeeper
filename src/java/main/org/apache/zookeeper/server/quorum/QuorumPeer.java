@@ -593,6 +593,7 @@ public class QuorumPeer extends Thread implements QuorumStats.Provider {
             qcm = new QuorumCnxManager(this);
             QuorumCnxManager.Listener listener = qcm.listener;
             if(listener != null){
+                // 监听socket连接
                 listener.start();
                 // 默认选举算法
                 le = new FastLeaderElection(this, qcm);

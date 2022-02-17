@@ -176,6 +176,7 @@ public class QuorumCnxManager {
         DataOutputStream dout = null;
         try {
             // Sending id and challenge
+            // 连接建立后发送当前节点serverId
             dout = new DataOutputStream(sock.getOutputStream());
             dout.writeLong(self.getId());
             dout.flush();
@@ -184,7 +185,9 @@ public class QuorumCnxManager {
             closeSocket(sock);
             return false;
         }
-        
+
+        // 如果对方的serverId比当前节点serverId大就关闭连接
+        // 只能serverId大的节点向serverId小的节点发起连接建立
         // If lost the challenge, then drop the new connection
         if (sid > self.getId()) {
             LOG.info("Have smaller server identifier, so dropping the " +
@@ -192,6 +195,7 @@ public class QuorumCnxManager {
             closeSocket(sock);
             // Otherwise proceed with the connection
         } else {
+            // 启动消息发送线程和接收线程
             SendWorker sw = new SendWorker(sock, sid);
             RecvWorker rw = new RecvWorker(sock, sid, sw);
             sw.setRecv(rw);
@@ -231,6 +235,7 @@ public class QuorumCnxManager {
         try {
             // Read server id
             DataInputStream din = new DataInputStream(sock.getInputStream());
+            // 连接建立后client会发送自己的serverId
             sid = din.readLong();
             if (sid == QuorumPeer.OBSERVER_ID) {
                 /*
@@ -248,6 +253,7 @@ public class QuorumCnxManager {
         }
         
         //If wins the challenge, then close the new connection.
+        // 只允许serverId更大的节点发起建立连接
         if (sid < self.getId()) {
             /*
              * This replica might still believe that the connection to sid is
@@ -310,6 +316,7 @@ public class QuorumCnxManager {
              /*
               * Start a new connection if doesn't have one already.
               */
+            // 把消息放到serverId对应的发送队列里
              if (!queueSendMap.containsKey(sid)) {
                  ArrayBlockingQueue<ByteBuffer> bq = new ArrayBlockingQueue<ByteBuffer>(
                          SEND_CAPACITY);
@@ -351,10 +358,12 @@ public class QuorumCnxManager {
                 }
                 Socket sock = new Socket();
                 setSockOpts(sock);
+                // 建立socket连接
                 sock.connect(self.getView().get(sid).electionAddr, cnxTO);
                 if (LOG.isDebugEnabled()) {
                     LOG.debug("Connected to server " + sid);
                 }
+                // 初始化连接
                 initiateConnection(sock, sid);
             } catch (UnresolvedAddressException e) {
                 // Sun doesn't include the address that causes this
@@ -492,6 +501,7 @@ public class QuorumCnxManager {
                         setSockOpts(client);
                         LOG.info("Received connection request "
                                 + client.getRemoteSocketAddress());
+                        // 收到其他节点连接请求
                         receiveConnection(client);
                         numRetries = 0;
                     }
@@ -664,6 +674,7 @@ public class QuorumCnxManager {
                         ArrayBlockingQueue<ByteBuffer> bq = queueSendMap
                                 .get(sid);
                         if (bq != null) {
+                            // 从发送队列里取一条消息
                             b = pollSendQueue(bq, 1000, TimeUnit.MILLISECONDS);
                         } else {
                             LOG.error("No queue of incoming messages for " +
@@ -672,7 +683,9 @@ public class QuorumCnxManager {
                         }
 
                         if(b != null){
+                            // 记录最后一条发送的消息
                             lastMessageSent.put(sid, b);
+                            // 发送消息
                             send(b);
                         }
                     } catch (InterruptedException e) {
@@ -863,6 +876,7 @@ public class QuorumCnxManager {
                 }
             }
             try {
+                // 添加到消息接收队列
                 recvQueue.add(msg);
             } catch (IllegalStateException ie) {
                 // This should never happen
