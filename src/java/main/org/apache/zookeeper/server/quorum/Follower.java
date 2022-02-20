@@ -66,9 +66,12 @@ public class Follower extends Learner{
         self.end_fle = 0;
         fzk.registerJMX(new FollowerBean(this, zk), self.jmxLocalPeerBean);
         try {
+            // 寻找leader地址
             InetSocketAddress addr = findLeader();            
             try {
+                // 向leader发起连接
                 connectToLeader(addr);
+                // 注册到leader
                 long newEpochZxid = registerWithLeader(Leader.FOLLOWERINFO);
 
                 //check to see if the leader zxid is lower than ours
@@ -79,10 +82,13 @@ public class Follower extends Learner{
                             + " is less than our accepted epoch " + ZxidUtils.zxidToString(self.getAcceptedEpoch()));
                     throw new IOException("Error: Epoch of leader is lower");
                 }
+                // 从leader同步数据
                 syncWithLeader(newEpochZxid);                
                 QuorumPacket qp = new QuorumPacket();
                 while (self.isRunning()) {
+                    // 读取从leader同步过来的数据
                     readPacket(qp);
+                    // 数据处理
                     processPacket(qp);
                 }
             } catch (IOException e) {

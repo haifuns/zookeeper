@@ -219,6 +219,7 @@ public class Learner {
     throws IOException, ConnectException, InterruptedException {
         sock = new Socket();        
         sock.setSoTimeout(self.tickTime * self.initLimit);
+        // 尝试连接, 最多尝试5次
         for (int tries = 0; tries < 5; tries++) {
             try {
                 sock.connect(addr, self.tickTime * self.syncLimit);
@@ -237,9 +238,11 @@ public class Learner {
             }
             Thread.sleep(1000);
         }
+        // jute协议, archive缓冲输入流
         leaderIs = BinaryInputArchive.getArchive(new BufferedInputStream(
                 sock.getInputStream()));
         bufferedOutput = new BufferedOutputStream(sock.getOutputStream());
+        // jute协议, archive缓冲输出流
         leaderOs = BinaryOutputArchive.getArchive(bufferedOutput);
     }   
     
@@ -265,6 +268,7 @@ public class Learner {
         LearnerInfo li = new LearnerInfo(self.getId(), 0x10000);
         ByteArrayOutputStream bsid = new ByteArrayOutputStream();
         BinaryOutputArchive boa = BinaryOutputArchive.getArchive(bsid);
+        // 使用Jute协议序列化
         boa.writeRecord(li, "LearnerInfo");
         qp.setData(bsid.toByteArray());
         

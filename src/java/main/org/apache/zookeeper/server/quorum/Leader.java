@@ -302,6 +302,7 @@ public class Leader {
                         // in LearnerHandler switch to the syncLimit
                         s.setSoTimeout(self.tickTime * self.initLimit);
                         s.setTcpNoDelay(nodelay);
+                        // learner处理器
                         LearnerHandler fh = new LearnerHandler(s, Leader.this);
                         fh.start();
                     } catch (SocketException e) {
@@ -357,6 +358,7 @@ public class Leader {
 
             // Start thread that waits for connection requests from 
             // new followers.
+            // 监听follower连接请求
             cnxAcceptor = new LearnerCnxAcceptor();
             cnxAcceptor.start();
             
