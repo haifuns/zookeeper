@@ -492,8 +492,10 @@ public class LearnerHandler extends Thread {
             // so we need to mark when the peer can actually start
             // using the data
             //
+            // 发送一条UPTODATE消息, 表明follower目前消息时最新的, 可以开始处理客户端请求
             queuedPackets.add(new QuorumPacket(Leader.UPTODATE, -1, null, null));
 
+            // 接下来循环处理正常消息
             while (true) {
                 qp = new QuorumPacket();
                 ia.readRecord(qp, "packet");
