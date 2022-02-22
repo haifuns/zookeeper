@@ -134,7 +134,7 @@ public class QuorumPeerMain {
   
       LOG.info("Starting quorum peer");
       try {
-          // 网络连接工厂
+          // 网络连接工厂, 默认使用NIO, NIOServerCnxnFactory
           ServerCnxnFactory cnxnFactory = ServerCnxnFactory.createFactory();
           cnxnFactory.configure(config.getClientPortAddress(),
                                 config.getMaxClientCnxns());

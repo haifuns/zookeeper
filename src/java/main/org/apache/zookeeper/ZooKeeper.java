@@ -37,6 +37,8 @@ import java.net.SocketAddress;
 import java.util.*;
 
 /**
+ * 客户端主类
+ *
  * This is the main class of ZooKeeper client library. To use a ZooKeeper
  * service, an application must first instantiate an object of ZooKeeper class.
  * All the iterations will be done by calling the methods of ZooKeeper class.
@@ -332,6 +334,8 @@ public class ZooKeeper {
     }
 
     /**
+     * 常用构造函数
+     *
      * To create a ZooKeeper client object, the application needs to pass a
      * connection string containing a comma separated list of host:port pairs,
      * each corresponding to a ZooKeeper server.
@@ -444,6 +448,8 @@ public class ZooKeeper {
                 connectString);
         HostProvider hostProvider = new StaticHostProvider(
                 connectStringParser.getServerAddresses());
+
+        // 核心组件ClietCnxn, 与服务端通信
         cnxn = new ClientCnxn(connectStringParser.getChrootPath(),
                 hostProvider, sessionTimeout, this, watchManager,
                 getClientCnxnSocket(), canBeReadOnly);
@@ -1769,6 +1775,7 @@ public class ZooKeeper {
         String clientCnxnSocketName = System
                 .getProperty(ZOOKEEPER_CLIENT_CNXN_SOCKET);
         if (clientCnxnSocketName == null) {
+            // 默认基于NIO进行网络通信
             clientCnxnSocketName = ClientCnxnSocketNIO.class.getName();
         }
         try {

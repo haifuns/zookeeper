@@ -121,6 +121,8 @@ public class LearnerHandler extends Thread {
     }
 
     /**
+     * 从待发送队列里拉取消息逐条发送给learner
+     *
      * This method will use the thread to send packets added to the
      * queuedPackets list
      *
@@ -275,7 +277,7 @@ public class LearnerHandler extends Thread {
             long zxid = qp.getZxid();
             long newEpoch = leader.getEpochToPropose(this.getSid(), lastAcceptedEpoch);
             
-            if (this.getVersion() < 0x10000) {
+            if (this.getVersion() < 0x10000) { // peer未注册
                 // we are going to have to extrapolate the epoch information
                 long epoch = ZxidUtils.getEpochFromZxid(zxid);
                 ss = new StateSummary(epoch, zxid);
@@ -285,9 +287,11 @@ public class LearnerHandler extends Thread {
                 byte ver[] = new byte[4];
                 ByteBuffer.wrap(ver).putInt(0x10000);
                 QuorumPacket newEpochPacket = new QuorumPacket(Leader.LEADERINFO, ZxidUtils.makeZxid(newEpoch, 0), ver, null);
+                // 发送leader info消息
                 oa.writeRecord(newEpochPacket, "packet");
                 bufferedOutput.flush();
                 QuorumPacket ackEpochPacket = new QuorumPacket();
+                // 读取响应消息
                 ia.readRecord(ackEpochPacket, "packet");
                 if (ackEpochPacket.getType() != Leader.ACKEPOCH) {
                     LOG.error(ackEpochPacket.toString()
@@ -296,11 +300,14 @@ public class LearnerHandler extends Thread {
 				}
                 ByteBuffer bbepoch = ByteBuffer.wrap(ackEpochPacket.getData());
                 ss = new StateSummary(bbepoch.getInt(), ackEpochPacket.getZxid());
+                // 等待多数节点ack消息
                 leader.waitForEpochAck(this.getSid(), ss);
             }
+            // peer最大的zxid
             peerLastZxid = ss.getLastZxid();
             
             /* the default to send to the follower */
+            // 默认情况下同步快照
             int packetToSend = Leader.SNAP;
             long zxidToSend = 0;
             long leaderLastZxid = 0;
@@ -313,18 +320,23 @@ public class LearnerHandler extends Thread {
             ReentrantReadWriteLock lock = leader.zk.getZKDatabase().getLogLock();
             ReadLock rl = lock.readLock();
             try {
-                rl.lock();        
+                // 获取zk commit日志读锁
+                rl.lock();
+                // 最大commit日志
                 final long maxCommittedLog = leader.zk.getZKDatabase().getmaxCommittedLog();
+                // 最小commit日志
                 final long minCommittedLog = leader.zk.getZKDatabase().getminCommittedLog();
                 LOG.info("Synchronizing with Follower sid: " + sid
                         +" maxCommittedLog=0x"+Long.toHexString(maxCommittedLog)
                         +" minCommittedLog=0x"+Long.toHexString(minCommittedLog)
                         +" peerLastZxid=0x"+Long.toHexString(peerLastZxid));
 
+                // commit日志列表
                 LinkedList<Proposal> proposals = leader.zk.getZKDatabase().getCommittedLog();
 
                 if (proposals.size() != 0) {
                     LOG.debug("proposal size is {}", proposals.size());
+                    // 如果peer最大的zxid在leader最小commit日志和最大commit日志之间
                     if ((maxCommittedLog >= peerLastZxid)
                             && (minCommittedLog <= peerLastZxid)) {
                         LOG.debug("Sending proposals to follower");
@@ -350,6 +362,7 @@ public class LearnerHandler extends Thread {
                                 prevProposalZxid = propose.packet.getZxid();
                                 continue;
                             } else {
+                                // 要求follower从minCommittedLog截断, 之后的日志重新同步, 防止peer中有leader没有的事务日志
                                 // If we are sending the first packet, figure out whether to trunc
                                 // in case the follower has some proposals that the leader doesn't
                                 if (firstPacket) {
@@ -362,6 +375,7 @@ public class LearnerHandler extends Thread {
                                         updates = zxidToSend;
                                     }
                                 }
+                                // 把事务提交到发送队列中, 每条事务消息跟随一个commit消息
                                 queuePacket(propose.packet);
                                 QuorumPacket qcommit = new QuorumPacket(Leader.COMMIT, propose.packet.getZxid(),
                                         null, null);
@@ -394,9 +408,11 @@ public class LearnerHandler extends Thread {
                 }               
 
                 LOG.info("Sending " + Leader.getPacketType(packetToSend));
+                // 添加follower到leader forwarding follower列表
                 leaderLastZxid = leader.startForwarding(this, updates);
 
             } finally {
+                // commit日志读锁解锁
                 rl.unlock();
             }
 
@@ -405,6 +421,7 @@ public class LearnerHandler extends Thread {
              if (getVersion() < 0x10000) {
                 oa.writeRecord(newLeaderQP, "packet");
             } else {
+                 // 最后添加一条NEWLEADER消息
                 queuedPackets.add(newLeaderQP);
             }
             bufferedOutput.flush();
@@ -412,6 +429,7 @@ public class LearnerHandler extends Thread {
             if (packetToSend == Leader.SNAP) {
                 zxidToSend = leader.zk.getZKDatabase().getDataTreeLastProcessedZxid();
             }
+            // 发送一条消息通知learner开始同步数据
             oa.writeRecord(new QuorumPacket(packetToSend, zxidToSend, null, null), "packet");
             bufferedOutput.flush();
             
@@ -424,6 +442,7 @@ public class LearnerHandler extends Thread {
                         + "sent zxid of db as 0x" 
                         + Long.toHexString(zxidToSend));
                 // Dump data to peer
+                // 如果需要同步快照就把整个db序列化
                 leader.zk.getZKDatabase().serializeSnapshot(oa);
                 oa.writeString("BenWasHere", "signature");
             }
@@ -447,12 +466,14 @@ public class LearnerHandler extends Thread {
              * the leader is ready, and only then we can
              * start processing messages.
              */
+            // 等待同步之后peer响应的ACK消息
             qp = new QuorumPacket();
             ia.readRecord(qp, "packet");
             if(qp.getType() != Leader.ACK){
                 LOG.error("Next packet was supposed to be an ACK");
                 return;
             }
+            // 处理ACK消息
             leader.processAck(this.sid, qp.getZxid(), sock.getLocalSocketAddress());
             
             // now that the ack has been processed expect the syncLimit
@@ -461,6 +482,7 @@ public class LearnerHandler extends Thread {
             /*
              * Wait until leader starts up
              */
+            // 等待leader启动
             synchronized(leader.zk){
                 while(!leader.zk.isRunning() && !this.isInterrupted()){
                     leader.zk.wait(20);

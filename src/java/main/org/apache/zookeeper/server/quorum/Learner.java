@@ -322,10 +322,10 @@ public class Learner {
         LinkedList<Long> packetsCommitted = new LinkedList<Long>();
         LinkedList<PacketInFlight> packetsNotCommitted = new LinkedList<PacketInFlight>();
         synchronized (zk) {
-            if (qp.getType() == Leader.DIFF) {
+            if (qp.getType() == Leader.DIFF) { // 合并
                 LOG.info("Getting a diff from the leader 0x" + Long.toHexString(qp.getZxid()));                
             }
-            else if (qp.getType() == Leader.SNAP) {
+            else if (qp.getType() == Leader.SNAP) { // 同步快照
                 LOG.info("Getting a snapshot from leader");
                 // The leader is going to dump the database
                 // clear our own database and read
@@ -336,7 +336,7 @@ public class Learner {
                     LOG.error("Missing signature. Got " + signature);
                     throw new IOException("Missing signature");                   
                 }
-            } else if (qp.getType() == Leader.TRUNC) {
+            } else if (qp.getType() == Leader.TRUNC) { // 回滚, 截断日志
                 //we need to truncate the log to the lastzxid of the leader
                 LOG.warn("Truncating log to get in sync with the leader 0x"
                         + Long.toHexString(qp.getZxid()));

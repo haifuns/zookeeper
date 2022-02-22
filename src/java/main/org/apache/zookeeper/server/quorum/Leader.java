@@ -370,7 +370,8 @@ public class Leader {
             synchronized(this){
                 lastProposed = zk.getZxid();
             }
-            
+
+            // 初始NEWLEADER消息
             newLeaderProposal.packet = new QuorumPacket(NEWLEADER, zk.getZxid(),
                     null, null);
 
@@ -381,13 +382,15 @@ public class Leader {
             }
             outstandingProposals.put(newLeaderProposal.packet.getZxid(), newLeaderProposal);
             newLeaderProposal.ackSet.add(self.getId());
-            
+
+            // 等待大多数节点注册
             waitForEpochAck(self.getId(), leaderStateSummary);
             self.setCurrentEpoch(epoch);
 
             // We have to get at least a majority of servers in sync with
             // us. We do this by waiting for the NEWLEADER packet to get
             // acknowledged
+            // 确保集群中大多数节点保持同步
             while (!self.getQuorumVerifier().containsQuorum(newLeaderProposal.ackSet)){
             //while (newLeaderProposal.ackCount <= self.quorumPeers.size() / 2) {
                 if (self.tick > self.initLimit) {
@@ -396,7 +399,8 @@ public class Leader {
                     StringBuilder ackToString = new StringBuilder();
                     for(Long id : newLeaderProposal.ackSet)
                         ackToString.append(id + ": ");
-                    
+
+                    // 关闭zk服务, 等待大多数follower保持同步
                     shutdown("Waiting for a quorum of followers, only synced with: " + ackToString);
                     HashSet<Long> followerSet = new HashSet<Long>();
 
@@ -544,13 +548,15 @@ public class Leader {
             }
             LOG.trace("outstanding proposals all");
         }
-        
+
+        // 没有处理中的事务
         if (outstandingProposals.size() == 0) {
             if (LOG.isDebugEnabled()) {
                 LOG.debug("outstanding is 0");
             }
             return;
         }
+        // 判断当前zxid是否已经被commit
         if (lastCommitted >= zxid) {
             if (LOG.isDebugEnabled()) {
                 LOG.debug("proposal has already been committed, pzxid: 0x{} zxid: 0x{}",
@@ -565,12 +571,14 @@ public class Leader {
                     Long.toHexString(zxid), followerAddr);
             return;
         }
-        
+
+        // 记录peer proposal ack
         p.ackSet.add(sid);
         if (LOG.isDebugEnabled()) {
             LOG.debug("Count for zxid: 0x{} is {}",
                     Long.toHexString(zxid), p.ackSet.size());
         }
+        // 是否满足大多数节点ACK
         if (self.getQuorumVerifier().containsQuorum(p.ackSet)){             
             if (zxid != lastCommitted+1) {
                 LOG.warn("Commiting zxid 0x{} from {} not first!",
@@ -579,6 +587,7 @@ public class Leader {
             }
             outstandingProposals.remove(zxid);
             if (p.request != null) {
+                // 保存已经完成投票被commit的proposal
                 toBeApplied.add(p);
             }
             // We don't commit the new leader proposal
@@ -586,8 +595,11 @@ public class Leader {
                 if (p.request == null) {
                     LOG.warn("Going to commmit null request for proposal: {}", p);
                 }
+                // 发送给所有follower commit消息
                 commit(zxid);
+                // 同步给所有observer
                 inform(p);
+                // commit proposal
                 zk.commitProcessor.commit(p.request);
                 if(pendingSyncs.containsKey(zxid)){
                     for(LearnerSyncRequest r: pendingSyncs.remove(zxid)) {
@@ -596,9 +608,11 @@ public class Leader {
                 }
                 return;
             } else {
+                // NEWLEADER消息
                 lastCommitted = zxid;
                 LOG.info("Have quorum of supporters; starting up and setting last processed zxid: 0x{}",
                         Long.toHexString(zk.getZxid()));
+                // 启动leader zk服务
                 zk.startup();
                 zk.getZKDatabase().setlastProcessedZxid(zk.getZxid());
             }
@@ -816,6 +830,7 @@ public class Leader {
             long lastSeenZxid) {
         // Queue up any outstanding requests enabling the receipt of
         // new requests
+        // 如果follower落后leader, 把已经commit的消息重新同步
         if (lastProposed > lastSeenZxid) {
             for (Proposal p : toBeApplied) {
                 if (p.packet.getZxid() <= lastSeenZxid) {
@@ -834,12 +849,15 @@ public class Leader {
                 if (zxid <= lastSeenZxid) {
                     continue;
                 }
+                // 没有完成投票的消息发送给follower
                 handler.queuePacket(outstandingProposals.get(zxid).packet);
             }
         }
         if (handler.getLearnerType() == LearnerType.PARTICIPANT) {
+            // 添加到follower列表
             addForwardingFollower(handler);
         } else {
+            // 添加到observer列表
             addObserverLearnerHandler(handler);
         }
                 
