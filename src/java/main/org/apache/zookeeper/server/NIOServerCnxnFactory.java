@@ -58,7 +58,7 @@ public class NIOServerCnxnFactory extends ServerCnxnFactory implements Runnable 
 
     ServerSocketChannel ss;
 
-    final Selector selector = Selector.open();
+    final Selector selector = Selector.open(); // 多路复用组件
 
     /**
      * We use this buffer to do efficient socket I/O. Since there is a single
@@ -175,6 +175,7 @@ public class NIOServerCnxnFactory extends ServerCnxnFactory implements Runnable 
     public void run() {
         while (!ss.socket().isClosed()) {
             try {
+                // 阻塞等待, 监听客户端网络连接
                 selector.select(1000);
                 Set<SelectionKey> selected;
                 synchronized (this) {
@@ -182,9 +183,11 @@ public class NIOServerCnxnFactory extends ServerCnxnFactory implements Runnable 
                 }
                 ArrayList<SelectionKey> selectedList = new ArrayList<SelectionKey>(
                         selected);
+                // 保证不同客户端请求是随机处理的
                 Collections.shuffle(selectedList);
                 for (SelectionKey k : selectedList) {
                     if ((k.readyOps() & SelectionKey.OP_ACCEPT) != 0) {
+                        // 处理客户端连接请求
                         SocketChannel sc = ((ServerSocketChannel) k
                                 .channel()).accept();
                         InetAddress ia = sc.socket().getInetAddress();
@@ -204,6 +207,7 @@ public class NIOServerCnxnFactory extends ServerCnxnFactory implements Runnable 
                             addCnxn(cnxn);
                         }
                     } else if ((k.readyOps() & (SelectionKey.OP_READ | SelectionKey.OP_WRITE)) != 0) {
+                        // 处理客户端读写请求
                         NIOServerCnxn c = (NIOServerCnxn) k.attachment();
                         c.doIO(k);
                     } else {

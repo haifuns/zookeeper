@@ -444,12 +444,14 @@ public class ZooKeeper {
 
         watchManager.defaultWatcher = watcher;
 
+        // 解析zk机器列表
         ConnectStringParser connectStringParser = new ConnectStringParser(
                 connectString);
+        // 可以循环随机选择一个zk机器返回
         HostProvider hostProvider = new StaticHostProvider(
                 connectStringParser.getServerAddresses());
 
-        // 核心组件ClietCnxn, 与服务端通信
+        // 核心组件ClientCnxn, 与服务端通信
         cnxn = new ClientCnxn(connectStringParser.getChrootPath(),
                 hostProvider, sessionTimeout, this, watchManager,
                 getClientCnxnSocket(), canBeReadOnly);

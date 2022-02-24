@@ -379,7 +379,9 @@ public class ClientCnxn {
         readTimeout = sessionTimeout * 2 / 3;
         readOnly = canBeReadOnly;
 
+        // 基于socket与zk服务端通信, 发送数据
         sendThread = new SendThread(clientCnxnSocket);
+        // 接收zk服务端反向通知的事件
         eventThread = new EventThread();
 
     }
@@ -859,8 +861,11 @@ public class ClientCnxn {
                 // TODO: here we have the only remaining use of zooKeeper in
                 // this class. It's to be eliminated!
                 if (!disableAutoWatchReset) {
+                    // 监听znode数据变化
                     List<String> dataWatches = zooKeeper.getDataWatches();
+                    // 监听znode是否存在
                     List<String> existWatches = zooKeeper.getExistWatches();
+                    // 监听znode下子节点的变化
                     List<String> childWatches = zooKeeper.getChildWatches();
                     if (!dataWatches.isEmpty()
                                 || !existWatches.isEmpty() || !childWatches.isEmpty()) {
@@ -881,9 +886,13 @@ public class ClientCnxn {
                             OpCode.auth), null, new AuthPacket(0, id.scheme,
                             id.data), null, null));
                 }
+
+                // 发送ConnectRequest
                 outgoingQueue.addFirst(new Packet(null, null, conReq,
                             null, null, readOnly));
             }
+
+            // 后续对这个连接仅关注读写请求
             clientCnxnSocket.enableReadWriteOnly();
             if (LOG.isDebugEnabled()) {
                 LOG.debug("Session establishment request sent on "
@@ -990,6 +999,7 @@ public class ClientCnxn {
                         if (closing || !state.isAlive()) {
                             break;
                         }
+                        // 与zk服务端建立长连接
                         startConnect();
                         clientCnxnSocket.updateLastSendAndHeard();
                     }
