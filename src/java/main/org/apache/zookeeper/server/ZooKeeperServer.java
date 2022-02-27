@@ -776,6 +776,7 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
     
     public void processConnectRequest(ServerCnxn cnxn, ByteBuffer incomingBuffer) throws IOException {
         BinaryInputArchive bia = BinaryInputArchive.getArchive(new ByteBufferInputStream(incomingBuffer));
+        // Jute协议反序列化连接请求
         ConnectRequest connReq = new ConnectRequest();
         connReq.deserialize(bia, "connect");
         if (LOG.isDebugEnabled()) {
@@ -839,6 +840,8 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
         } else {
             LOG.info("Client attempting to establish new session at "
                     + cnxn.getRemoteSocketAddress());
+
+            // 第一次创建请求时sessionId为空, 开始创建session
             createSession(cnxn, passwd, sessionTimeout);
         }
     }

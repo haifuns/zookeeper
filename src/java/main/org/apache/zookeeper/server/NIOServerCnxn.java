@@ -183,6 +183,7 @@ public class NIOServerCnxn extends ServerCnxn {
 
     /** Read the request payload (everything following the length prefix) */
     private void readPayload() throws IOException, InterruptedException {
+        // 每个连接都对应一个incomingBuffer, 如果一个请求出现拆包, 在下次OP_READ事件时继续读取到incomingBuffer中
         if (incomingBuffer.remaining() != 0) { // have we read length bytes?
             int rc = sock.read(incomingBuffer); // sock is non-blocking, so ok
             if (rc < 0) {
@@ -193,10 +194,12 @@ public class NIOServerCnxn extends ServerCnxn {
             }
         }
 
+        // 如果读取完毕
         if (incomingBuffer.remaining() == 0) { // have we read length bytes?
             packetReceived();
             incomingBuffer.flip();
             if (!initialized) {
+                // 如果没有完成session初始化, 此时读取到的第一个请求一定是ConnectRequest
                 readConnectRequest();
             } else {
                 readRequest();
@@ -215,6 +218,7 @@ public class NIOServerCnxn extends ServerCnxn {
                 return;
             }
             if (k.isReadable()) {
+                // 首先读取4个字节
                 int rc = sock.read(incomingBuffer);
                 if (rc < 0) {
                     throw new EndOfStreamException(
@@ -222,17 +226,19 @@ public class NIOServerCnxn extends ServerCnxn {
                             + Long.toHexString(sessionId)
                             + ", likely client has closed socket");
                 }
+                // 如果读取到4个字节, 当前请求长度
                 if (incomingBuffer.remaining() == 0) {
                     boolean isPayload;
                     if (incomingBuffer == lenBuffer) { // start of next request
                         incomingBuffer.flip();
-                        isPayload = readLength(k);
+                        isPayload = readLength(k); // 根据请求长度创建Buffer
                         incomingBuffer.clear();
                     } else {
                         // continuation
                         isPayload = true;
                     }
                     if (isPayload) { // not the case for 4letterword
+                        // 开始正式从socket中读取数据
                         readPayload();
                     }
                     else {

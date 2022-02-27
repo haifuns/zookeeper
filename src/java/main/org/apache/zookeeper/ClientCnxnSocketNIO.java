@@ -65,6 +65,7 @@ public class ClientCnxnSocketNIO extends ClientCnxnSocket {
             throw new IOException("Socket is null!");
         }
         if (sockKey.isReadable()) {
+            // 服务端的消息响应或者事件通知
             int rc = sock.read(incomingBuffer);
             if (rc < 0) {
                 throw new EndOfStreamException(
@@ -100,6 +101,7 @@ public class ClientCnxnSocketNIO extends ClientCnxnSocket {
         }
         if (sockKey.isWritable()) {
             synchronized(outgoingQueue) {
+                // 从队列获取一个Packet, 此时并没有删除
                 Packet p = findSendablePacket(outgoingQueue,
                         cnxn.sendThread.clientTunneledAuthenticationInProgress());
 
@@ -115,13 +117,16 @@ public class ClientCnxnSocketNIO extends ClientCnxnSocket {
                         p.createBB();
                     }
                     sock.write(p.bb);
+                    // 处理拆包, 如果消息发送完了
                     if (!p.bb.hasRemaining()) {
                         sentCount++;
+                        // 从发送队列移除消息
                         outgoingQueue.removeFirstOccurrence(p);
                         if (p.requestHeader != null
                                 && p.requestHeader.getType() != OpCode.ping
                                 && p.requestHeader.getType() != OpCode.auth) {
                             synchronized (pendingQueue) {
+                                // 添加到待响应队列
                                 pendingQueue.add(p);
                             }
                         }
@@ -133,9 +138,11 @@ public class ClientCnxnSocketNIO extends ClientCnxnSocket {
                     // from within ZooKeeperSaslClient (if client is configured
                     // to attempt SASL authentication), or in either doIO() or
                     // in doTransport() if not.
+                    // 如果待发送队列是空就停止关注写事件
                     disableWrite();
                 } else {
                     // Just in case
+                    // 如果待发送队列不是空就关注写事件
                     enableWrite();
                 }
             }
@@ -353,6 +360,7 @@ public class ClientCnxnSocketNIO extends ClientCnxnSocket {
                     sendThread.primeConnection();
                 }
             } else if ((k.readyOps() & (SelectionKey.OP_READ | SelectionKey.OP_WRITE)) != 0) {
+                // 执行读写时间对应的IO操作
                 doIO(pendingQueue, outgoingQueue, cnxn);
             }
         }
