@@ -74,7 +74,12 @@ public class SessionTrackerImpl extends Thread implements SessionTracker {
 
     public static long initializeNextSession(long id) {
         long nextSid = 0;
+        // 时间戳41位, 左移24位后, **由于long最大63位**, 只能移动22位, 所以低22位是0, 高41位表示时间戳
+        // 右移8位后, 高8位是0, 低14位是0, 中间41位是时间戳
         nextSid = (System.currentTimeMillis() << 24) >> 8;
+
+        // 高8位表示serverId, 左移56位, 低55是0
+        // 或操作之后, 高8位表示serverId, 低14位是0, 中间41位是时间戳
         nextSid =  nextSid | (id <<56);
         return nextSid;
     }
@@ -174,6 +179,7 @@ public class SessionTrackerImpl extends Thread implements SessionTracker {
         if (s == null || s.isClosing()) {
             return false;
         }
+        // session下一次的过期时间
         long expireTime = roundToInterval(System.currentTimeMillis() + timeout);
         if (s.tickTime >= expireTime) {
             // Nothing needs to be done

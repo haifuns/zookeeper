@@ -383,6 +383,7 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
         if (sessionTracker == null) {
             createSessionTracker();
         }
+        // 启动session管理组件
         startSessionTracker();
         setupRequestProcessors();
 
