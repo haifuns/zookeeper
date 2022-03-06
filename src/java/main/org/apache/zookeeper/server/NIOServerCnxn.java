@@ -368,6 +368,7 @@ public class NIOServerCnxn extends ServerCnxn {
     }
 
     private void readRequest() throws IOException {
+        // 处理客户端消息
         zkServer.processPacket(this, incomingBuffer);
     }
     

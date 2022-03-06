@@ -1049,9 +1049,11 @@ public class ClientCnxn {
                                         + Long.toHexString(sessionId));
                     }
                     if (state.isConnected()) {
+                        // readTimeout - (当前时间 - 上次发送消息时间)
                         int timeToNextPing = readTimeout / 2
                                 - clientCnxnSocket.getIdleSend();
                         if (timeToNextPing <= 0) {
+                            // 发送ping消息
                             sendPing();
                             clientCnxnSocket.updateLastSend();
                         } else {
@@ -1370,6 +1372,7 @@ public class ClientCnxn {
                 outgoingQueue.add(packet);
             }
         }
+        // 唤醒底层网络通信组件, 避免Selector在阻塞状态中
         sendThread.getClientCnxnSocket().wakeupCnxn();
         return packet;
     }

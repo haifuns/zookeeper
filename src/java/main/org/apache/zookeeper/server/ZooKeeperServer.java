@@ -518,7 +518,9 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
     }
 
     long createSession(ServerCnxn cnxn, byte passwd[], int timeout) {
+        // 生成sessionId
         long sessionId = sessionTracker.createSession(timeout);
+        // 生成密码
         Random r = new Random(sessionId ^ superSecret);
         r.nextBytes(passwd);
         ByteBuffer to = ByteBuffer.allocate(4);
@@ -644,6 +646,7 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
             }
         }
         try {
+            // 更新session过期时间, 重新分桶
             touch(si.cnxn);
             boolean validpacket = Request.isValid(si.type);
             if (validpacket) {
