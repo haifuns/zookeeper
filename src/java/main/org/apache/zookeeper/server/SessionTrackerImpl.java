@@ -74,14 +74,28 @@ public class SessionTrackerImpl extends Thread implements SessionTracker {
 
     public static long initializeNextSession(long id) {
         long nextSid = 0;
-        // 时间戳41位, 左移24位后, **由于long最大63位**, 只能移动22位, 所以低22位是0, 高41位表示时间戳
-        // 右移8位后, 高8位是0, 低14位是0, 中间41位是时间戳
+        // 时间戳41位, 左移24位后, **由于long最大63位**, 所以低24位是0, 高39位表示时间戳, 前两位丢失
+        // 右移8位后, 高8位是0, 中间39位是时间戳, 低16位是0
         nextSid = (System.currentTimeMillis() << 24) >> 8;
-
-        // 高8位表示serverId, 左移56位, 低55是0
-        // 或操作之后, 高8位表示serverId, 低14位是0, 中间41位是时间戳
+        // 高7位表示serverId, 低56是0
+        // 或操作之后, 高7位表示serverId, 固定1位0, 中间39位是时间戳, 低16位是0
         nextSid =  nextSid | (id <<56);
         return nextSid;
+    }
+
+    public static void main(String[] args) {
+        Long id = System.currentTimeMillis();
+        System.out.println(Long.toBinaryString(id));
+        System.out.println(id);
+        id = id << 24;
+        System.out.println(Long.toBinaryString(id));
+        System.out.println(id);
+        id = id >> 8;
+        System.out.println(Long.toBinaryString(id));
+        System.out.println(id);
+        id = id | (1L << 56);
+        System.out.println(Long.toBinaryString(id));
+        System.out.println(id);
     }
 
     static class SessionSet {
