@@ -71,6 +71,8 @@ public class CommitProcessor extends Thread implements RequestProcessor {
             while (!finished) {
                 int len = toProcess.size();
                 for (int i = 0; i < len; i++) {
+                    // leader Leader.ToBeAppliedRequestProcessor
+                    // follower FinalRequestProcessor 结束处理
                     nextProcessor.processRequest(toProcess.get(i));
                 }
                 toProcess.clear();
@@ -160,6 +162,7 @@ public class CommitProcessor extends Thread implements RequestProcessor {
             if (LOG.isDebugEnabled()) {
                 LOG.debug("Committing request:: " + request);
             }
+            // 增加commitRequest, 唤醒线程
             committedRequests.add(request);
             notifyAll();
         }

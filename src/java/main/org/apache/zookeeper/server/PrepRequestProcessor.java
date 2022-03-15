@@ -178,7 +178,7 @@ public class PrepRequestProcessor extends Thread implements RequestProcessor {
 
     void addChangeRecord(ChangeRecord c) {
         synchronized (zks.outstandingChanges) {
-            zks.outstandingChanges.add(c);
+            zks.outstandingChanges.add(c); // 即将要处理的changeRecord
             zks.outstandingChangesForPath.put(c.path, c);
         }
     }
@@ -307,7 +307,8 @@ public class PrepRequestProcessor extends Thread implements RequestProcessor {
                                     zks.getTime(), type);
 
         switch (type) {
-            case OpCode.create:                
+            case OpCode.create:
+                // 检查session是否过期
                 zks.sessionTracker.checkSession(request.sessionId, request.getOwner());
                 CreateRequest createRequest = (CreateRequest)record;   
                 if(deserialize)
@@ -326,12 +327,15 @@ public class PrepRequestProcessor extends Thread implements RequestProcessor {
                 String parentPath = path.substring(0, lastSlash);
                 ChangeRecord parentRecord = getRecordForPath(parentPath);
 
+                // 检查当前路径权限
                 checkACL(zks, parentRecord.acl, ZooDefs.Perms.CREATE,
                         request.authInfo);
                 int parentCVersion = parentRecord.stat.getCversion();
                 CreateMode createMode =
                     CreateMode.fromFlag(createRequest.getFlags());
+                // 是否是顺序节点
                 if (createMode.isSequential()) {
+                    // 拼接序号
                     path = path + String.format(Locale.ENGLISH, "%010d", parentCVersion);
                 }
                 try {
@@ -363,7 +367,9 @@ public class PrepRequestProcessor extends Thread implements RequestProcessor {
                 parentRecord = parentRecord.duplicate(request.hdr.getZxid());
                 parentRecord.childCount++;
                 parentRecord.stat.setCversion(newCversion);
+                //
                 addChangeRecord(parentRecord);
+                // 添加了一个changeRecord
                 addChangeRecord(new ChangeRecord(request.hdr.getZxid(), path, s,
                         0, listACL));
                 break;

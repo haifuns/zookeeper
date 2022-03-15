@@ -98,6 +98,7 @@ public class SyncRequestProcessor extends Thread implements RequestProcessor {
                 } else {
                     si = queuedRequests.poll();
                     if (si == null) {
+                        // 队列里的propose都写入事务日志, 执行flush到磁盘
                         flush(toFlush);
                         continue;
                     }
@@ -107,6 +108,7 @@ public class SyncRequestProcessor extends Thread implements RequestProcessor {
                 }
                 if (si != null) {
                     // track the number of records written to the log
+                    // 追加日志
                     if (zks.getZKDatabase().append(si)) {
                         logCount++;
                         if (logCount > (snapCount / 2 + randRoll)) {
@@ -142,6 +144,7 @@ public class SyncRequestProcessor extends Thread implements RequestProcessor {
                         continue;
                     }
                     toFlush.add(si);
+                    // 事务日志大于1000条flush到磁盘
                     if (toFlush.size() > 1000) {
                         flush(toFlush);
                     }
@@ -164,6 +167,9 @@ public class SyncRequestProcessor extends Thread implements RequestProcessor {
         zks.getZKDatabase().commit();
         while (!toFlush.isEmpty()) {
             Request i = toFlush.remove();
+
+            // leader AckRequestProcessor 接收ACK
+            // follower SendAckRequestProcessor 发送ACK
             nextProcessor.processRequest(i);
         }
         if (nextProcessor instanceof Flushable) {

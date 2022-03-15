@@ -199,7 +199,7 @@ public class FileTxnLog implements TxnLog {
                     LOG.info("Creating new log file: log." +  
                             Long.toHexString(hdr.getZxid()));
                }
-               
+               // 日志文件
                logFileWrite = new File(logDir, ("log." + 
                        Long.toHexString(hdr.getZxid())));
                fos = new FileOutputStream(logFileWrite);
@@ -220,6 +220,7 @@ public class FileTxnLog implements TxnLog {
             }
             Checksum crc = makeChecksumAlgorithm();
             crc.update(buf, 0, buf.length);
+            // crc用来校验数据不能改变
             oa.writeLong(crc.getValue(), "txnEntryCRC");
             Util.writeTxnBytes(oa, buf);
             
@@ -313,6 +314,7 @@ public class FileTxnLog implements TxnLog {
             if (forceSync) {
                 long startSyncNS = System.nanoTime();
 
+                // 强制数据从os cache进入磁盘
                 log.getChannel().force(false);
 
                 long syncElapsedMS =

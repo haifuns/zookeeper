@@ -654,10 +654,12 @@ public class Leader {
          */
         public void processRequest(Request request) throws RequestProcessorException {
             // request.addRQRec(">tobe");
+            // FinalRequestProcessor 结束处理
             next.processRequest(request);
             Proposal p = toBeApplied.peek();
             if (p != null && p.request != null
                     && p.request.zxid == request.zxid) {
+                // 移除已经完成投票被commit的proposal
                 toBeApplied.remove();
             }
         }
@@ -783,6 +785,7 @@ public class Leader {
 
             lastProposed = p.packet.getZxid();
             outstandingProposals.put(lastProposed, p);
+            // 发送Proposal到follower
             sendPacket(pp);
         }
         return p;
