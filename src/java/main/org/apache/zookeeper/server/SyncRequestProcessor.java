@@ -119,6 +119,7 @@ public class SyncRequestProcessor extends Thread implements RequestProcessor {
                             if (snapInProcess != null && snapInProcess.isAlive()) {
                                 LOG.warn("Too busy to snap, skipping");
                             } else {
+                                // 每隔一定次数保存快照
                                 snapInProcess = new Thread("Snapshot Thread") {
                                         public void run() {
                                             try {
@@ -173,6 +174,7 @@ public class SyncRequestProcessor extends Thread implements RequestProcessor {
             nextProcessor.processRequest(i);
         }
         if (nextProcessor instanceof Flushable) {
+            // follower SendAckRequestProcessor执行
             ((Flushable)nextProcessor).flush();
         }
     }
