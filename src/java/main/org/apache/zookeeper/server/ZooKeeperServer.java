@@ -385,6 +385,7 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
         }
         // 启动session管理组件
         startSessionTracker();
+        // 启动过滤器链
         setupRequestProcessors();
 
         registerJMX();
@@ -650,6 +651,7 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
             touch(si.cnxn);
             boolean validpacket = Request.isValid(si.type);
             if (validpacket) {
+                // 处理器链开始正式处理消息
                 firstProcessor.processRequest(si);
                 if (si.cnxn != null) {
                     incInProcess();

@@ -367,9 +367,9 @@ public class PrepRequestProcessor extends Thread implements RequestProcessor {
                 parentRecord = parentRecord.duplicate(request.hdr.getZxid());
                 parentRecord.childCount++;
                 parentRecord.stat.setCversion(newCversion);
-                //
+                // 修改父目录
                 addChangeRecord(parentRecord);
-                // 添加了一个changeRecord
+                // 添加当前节点
                 addChangeRecord(new ChangeRecord(request.hdr.getZxid(), path, s,
                         0, listACL));
                 break;
@@ -658,6 +658,7 @@ public class PrepRequestProcessor extends Thread implements RequestProcessor {
             }
         }
         request.zxid = zks.getZxid();
+        // 交给下一个处理器
         nextProcessor.processRequest(request);
     }
 

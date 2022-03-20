@@ -79,6 +79,7 @@ public class CommitProcessor extends Thread implements RequestProcessor {
                 synchronized (this) {
                     if ((queuedRequests.size() == 0 || nextPending != null)
                             && committedRequests.size() == 0) {
+                        // 在多数节点ack之前会阻塞
                         wait();
                         continue;
                     }
@@ -93,6 +94,7 @@ public class CommitProcessor extends Thread implements RequestProcessor {
                          * use nextPending because it has the cnxn member set
                          * properly.
                          */
+                        // 只有当已经可以commit消息保存到toProcess
                         if (nextPending != null
                                 && nextPending.sessionId == r.sessionId
                                 && nextPending.cxid == r.cxid) {
