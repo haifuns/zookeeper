@@ -589,6 +589,7 @@ public class LearnerHandler extends Thread {
             	//close the socket to make sure the 
             	//other side can see it being close
             	try {
+                    // io异常关闭socket
             		sock.close();
             	} catch(IOException ie) {
             		// do nothing

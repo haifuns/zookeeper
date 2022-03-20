@@ -993,6 +993,7 @@ public class ClientCnxn {
             while (state.isAlive()) {
                 try {
                     if (!clientCnxnSocket.isConnected()) {
+                        // 当前不是第一次连接
                         if(!isFirstConnect){
                             try {
                                 Thread.sleep(r.nextInt(1000));
@@ -1069,6 +1070,7 @@ public class ClientCnxn {
                     }
 
                     // If we are in read-only mode, seek for read/write server
+                    // 只读模式ping读写服务
                     if (state == States.CONNECTEDREADONLY) {
                         long now = System.currentTimeMillis();
                         int idlePingRwServer = (int) (now - lastPingRwServer);
@@ -1112,18 +1114,24 @@ public class ClientCnxn {
                                             + ", unexpected error"
                                             + RETRY_CONN_MSG, e);
                         }
+                        // 关闭连接、标记所有请求失败
                         cleanup();
                         if (state.isAlive()) {
+                            // 发布一个disconnected事件
+                            // 创建ZooKeeper时加的默认监听器
                             eventThread.queueEvent(new WatchedEvent(
                                     Event.EventType.None,
                                     Event.KeeperState.Disconnected,
                                     null));
                         }
+                        // 重新更新底层网络连接初始化时间
                         clientCnxnSocket.updateNow();
+                        // 重新初始化底层网络连接最近一次发送和接收请求响应的时间
                         clientCnxnSocket.updateLastSendAndHeard();
                     }
                 }
             }
+            // 客户端状态异常处理
             cleanup();
             clientCnxnSocket.close();
             if (state.isAlive()) {
@@ -1172,13 +1180,16 @@ public class ClientCnxn {
         }
 
         private void cleanup() {
+            // 客户端主动断开与服务器之间的连接
             clientCnxnSocket.cleanup();
+            // 所有已经发送完成正在等待响应的请求都标识失败
             synchronized (pendingQueue) {
                 for (Packet p : pendingQueue) {
                     conLossPacket(p);
                 }
                 pendingQueue.clear();
             }
+            // 对还没发送的请求, 标识失败
             synchronized (outgoingQueue) {
                 for (Packet p : outgoingQueue) {
                     conLossPacket(p);

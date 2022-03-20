@@ -192,7 +192,9 @@ public class ClientCnxnSocketNIO extends ClientCnxnSocket {
     void cleanup() {
         if (sockKey != null) {
             SocketChannel sock = (SocketChannel) sockKey.channel();
+            // 客户端主动断开网络连接 selectKey
             sockKey.cancel();
+            // 断开socket, 以及输入输出流
             try {
                 sock.socket().shutdownInput();
             } catch (IOException e) {

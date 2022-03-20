@@ -756,6 +756,7 @@ public class QuorumPeer extends Thread implements QuorumStats.Provider {
                     } catch (Exception e) {
                         LOG.warn("Unexpected exception",e);
                     } finally {
+                        // followLeader异常, 关闭follower, 节点重新进入LOOKING状态
                         follower.shutdown();
                         setFollower(null);
                         setPeerState(ServerState.LOOKING);
