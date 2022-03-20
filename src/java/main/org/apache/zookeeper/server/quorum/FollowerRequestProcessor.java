@@ -85,6 +85,7 @@ public class FollowerRequestProcessor extends Thread implements
                 case OpCode.createSession:
                 case OpCode.closeSession:
                 case OpCode.multi:
+                    // 转发请求到leader
                     zks.getFollower().request(request);
                     break;
                 }

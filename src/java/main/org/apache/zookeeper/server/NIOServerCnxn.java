@@ -979,6 +979,7 @@ public class NIOServerCnxn extends ServerCnxn {
             factory.unregisterConnection(this);
 
             if (zkServer != null) {
+                // 移除watcher
                 zkServer.removeCnxn(this);
             }
     
@@ -1117,6 +1118,7 @@ public class NIOServerCnxn extends ServerCnxn {
         // Convert WatchedEvent to a type that can be sent over the wire
         WatcherEvent e = event.getWrapper();
 
+        // 发送监听器事件到客户端
         sendResponse(h, e, "notification");
     }
 

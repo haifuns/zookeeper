@@ -494,6 +494,7 @@ public class ClientCnxn {
                  if (event == eventOfDeath) {
                     wasKilled = true;
                  } else {
+                     // 处理watcher事件
                     processEvent(event);
                  }
                  if (wasKilled)
@@ -518,6 +519,7 @@ public class ClientCnxn {
                   WatcherSetEventPair pair = (WatcherSetEventPair) event;
                   for (Watcher watcher : pair.watchers) {
                       try {
+                          // 回调客户端注册的监听器
                           watcher.process(pair.event);
                       } catch (Throwable t) {
                           LOG.error("Error while calling watcher ", t);
@@ -616,6 +618,7 @@ public class ClientCnxn {
 
     private void finishPacket(Packet p) {
         if (p.watchRegistration != null) {
+            // 客户端注册监听器
             p.watchRegistration.register(p.replyHeader.getErr());
         }
 
@@ -740,6 +743,8 @@ public class ClientCnxn {
                     LOG.debug("Got notification sessionid:0x"
                         + Long.toHexString(sessionId));
                 }
+
+                // 收到事件通知
                 WatcherEvent event = new WatcherEvent();
                 event.deserialize(bbia, "response");
 

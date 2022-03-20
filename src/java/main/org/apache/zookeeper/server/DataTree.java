@@ -519,6 +519,8 @@ public class DataTree {
             updateCount(lastPrefix, 1);
             updateBytes(lastPrefix, data == null ? 0 : data.length);
         }
+
+        // znode发生变化后, 触发当前节点以及父节点上的watcher监听器
         dataWatches.triggerWatch(path, Event.EventType.NodeCreated);
         childWatches.triggerWatch(parentName.equals("") ? "/" : parentName,
                 Event.EventType.NodeChildrenChanged);
@@ -650,6 +652,7 @@ public class DataTree {
         synchronized (n) {
             n.copyStat(stat);
             if (watcher != null) {
+                // 服务端添加watcher
                 dataWatches.addWatch(path, watcher);
             }
             return n.data;
@@ -1261,6 +1264,7 @@ public class DataTree {
     }
 
     public void removeCnxn(Watcher watcher) {
+        // session关闭后移除所有watcher
         dataWatches.removeWatcher(watcher);
         childWatches.removeWatcher(watcher);
     }
