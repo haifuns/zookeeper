@@ -114,6 +114,7 @@ public class SyncRequestProcessor extends Thread implements RequestProcessor {
                         if (logCount > (snapCount / 2 + randRoll)) {
                             randRoll = r.nextInt(snapCount/2);
                             // roll the log
+                            // 切换事务日志文件
                             zks.getZKDatabase().rollLog();
                             // take a snapshot
                             if (snapInProcess != null && snapInProcess.isAlive()) {
@@ -122,6 +123,7 @@ public class SyncRequestProcessor extends Thread implements RequestProcessor {
                                 snapInProcess = new Thread("Snapshot Thread") {
                                         public void run() {
                                             try {
+                                                // 生成日志快照
                                                 zks.takeSnapshot();
                                             } catch(Exception e) {
                                                 LOG.warn("Unexpected exception", e);

@@ -137,6 +137,7 @@ public class DatadirCleanupManager {
         public void run() {
             LOG.info("Purge task started.");
             try {
+                // 定时清理日志
                 PurgeTxnLog.purge(new File(logsDir), new File(snapsDir), snapRetainCount);
             } catch (Exception e) {
                 LOG.error("Error occured while purging.", e);

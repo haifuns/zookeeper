@@ -113,6 +113,7 @@ public class CommitProcessor extends Thread implements RequestProcessor {
 
                 // We haven't matched the pending requests, so go back to
                 // waiting
+                // 等待处理第一个请求, 保证顺序性
                 if (nextPending != null) {
                     continue;
                 }
